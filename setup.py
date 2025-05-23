@@ -20,6 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'menu = insperbot.menu:main',
+            'servo_arm = insperbot.servo_arm:main',
         ],
     },
 )
