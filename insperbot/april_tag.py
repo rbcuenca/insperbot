@@ -6,6 +6,7 @@ from rclpy.node import Node
 from rclpy.qos import ReliabilityPolicy, QoSProfile
 from apriltag_msgs.msg import AprilTagDetectionArray
 from std_msgs.msg import String
+from robcomp_interfaces.msg import AprilTagInsper
 
 
 class AprilTagDistancePublisher(Node):
@@ -16,7 +17,7 @@ class AprilTagDistancePublisher(Node):
             '/detections',
             self.listener_callback,
             QoSProfile(depth=10, reliability=ReliabilityPolicy.RELIABLE))
-        self.publisher_ = self.create_publisher(String, 'april_tag', 10)
+        self.publisher_ = self.create_publisher(AprilTagInsper, 'april_tag', 10)
 
         # Parâmetros da câmera (exemplo, substitua pelos seus valores calibrados)
         self.camera_matrix = np.array([[600, 0, 320],
@@ -25,22 +26,27 @@ class AprilTagDistancePublisher(Node):
         self.dist_coeffs = np.zeros((5, 1))  # Supondo sem distorção
 
         # Tamanho do lado do marcador em metros (ajuste conforme seu marcador)
-        self.tag_size = 0.173
+        
 
         # Pontos 3D do marcador no sistema do mundo (origem no centro do marcador)
-        half_size = self.tag_size / 2.0
-        self.object_points = np.array([
-            [-half_size,  half_size, 0],
-            [ half_size,  half_size, 0],
-            [ half_size, -half_size, 0],
-            [-half_size, -half_size, 0]
-        ])
+
 
     def listener_callback(self, msg):
         for detection in msg.detections:
             tag_id = detection.id
             center_x = detection.centre.x
             center_y = detection.centre.y
+            
+            if tag_id < 10: self.tag_size = 0.05
+            else: self.tag_size = 0.20
+            
+            half_size = self.tag_size / 2.0
+            self.object_points = np.array([
+                [-half_size,  half_size, 0],
+                [ half_size,  half_size, 0],
+                [ half_size, -half_size, 0],
+                [-half_size, -half_size, 0]
+            ])
 
             # Extrai os cantos 2D do marcador
             image_points = np.array([
@@ -63,16 +69,20 @@ class AprilTagDistancePublisher(Node):
             else:
                 distance = float('nan')
 
-            info_dict = {
-                'ID': int(tag_id),
-                'CX': int(center_x),
-                'CY': int(center_y),
-                'DIST': distance
-            }
-            self.get_logger().info(json.dumps(info_dict))
+            # info_dict = {
+            #     'ID': int(tag_id),
+            #     'CX': int(center_x),
+            #     'CY': int(center_y),
+            #     'DIST': distance
+            # }
+            # self.get_logger().info(json.dumps(info_dict))
 
-            msg_out = String()
-            msg_out.data = json.dumps(info_dict)
+            msg_out = AprilTagInsper()
+            msg_out.id = tag_id
+            msg_out.cx = center_x
+            msg_out.cy = center_y
+            msg_out.dist = distance
+            print(msg_out)
             self.publisher_.publish(msg_out)
 
 def main(args=None):

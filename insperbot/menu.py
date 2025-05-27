@@ -43,8 +43,8 @@ class Menu(Node):
         GPIO.setup(self.gpio_pin_left, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.gpio_pin_right, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         
-        GPIO.add_event_detect(self.gpio_pin_up, GPIO.FALLING, 
-                            callback=self.handle_up, bouncetime=300)
+        
+        
         GPIO.add_event_detect(self.gpio_pin_down, GPIO.FALLING, 
                             callback=self.handle_down, bouncetime=300)
         GPIO.add_event_detect(self.gpio_pin_left, GPIO.FALLING, 
