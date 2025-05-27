@@ -21,33 +21,23 @@ from PIL import Image, ImageDraw, ImageFont
 class Menu(Node):
     def __init__(self):
         super().__init__('menu')
-        # Configurando e inicando o display
-        self.RST = 24
-        self.DC = 23
-        self.SPI_PORT = 0
-        self.SPI_DEVICE = 0
-        self.disp = Adafruit_SSD1306.SSD1306_128_64(rst=self.RST)
-        self.disp.begin()
-        self.width = self.disp.width
-        self.height = self.disp.height
-        # Configuração da imagem
-        self.image = Image.new('1', (self.width, self.height))
-        self.draw = ImageDraw.Draw(self.image)
-        self.font = ImageFont.load_default()
-        # Configuração dos GPIOs
-        self.gpio_pin_down = 27
-        self.gpio_pin_up = 17
-        self.gpio_pin_left = 22
-        self.gpio_pin_right = 23        
+        
+        self.setup_gpio()
+        self.initialize_display()
+     
         # Estados do sistema
         self.confirmation_pending = False
         self.pending_action = None
         
-        self.setup_gpio()
-        self.initialize_display()
-              
+                      
     def setup_gpio(self):
+        #Cconfiguração da GPIO para o Display e Teclado
         GPIO.setmode(GPIO.BCM)
+
+        self.gpio_pin_down = 14
+        self.gpio_pin_up = 4
+        self.gpio_pin_left = 15
+        self.gpio_pin_right = 17   
         GPIO.setup(self.gpio_pin_down, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.gpio_pin_up, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.gpio_pin_left, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -61,8 +51,23 @@ class Menu(Node):
                             callback=self.handle_left, bouncetime=300)
         GPIO.add_event_detect(self.gpio_pin_right, GPIO.FALLING, 
                             callback=self.handle_right, bouncetime=300)
+        GPIO.setwarnings(False)
 
     def initialize_display(self):
+        self.RST = 24
+        self.DC = 23
+        self.SPI_PORT = 0
+        self.SPI_DEVICE = 0
+        self.disp = Adafruit_SSD1306.SSD1306_128_64(rst=self.RST)
+        self.disp.begin()
+        self.width = self.disp.width
+        self.height = self.disp.height
+        
+        # Configuração da imagem
+        self.image = Image.new('1', (self.width, self.height))
+        self.draw = ImageDraw.Draw(self.image)
+        self.font = ImageFont.load_default()
+        
         self.disp.clear()
         self.disp.display()
         self.show_main_screen()
@@ -81,52 +86,70 @@ class Menu(Node):
         
         self.draw.text((0, 0), f"    {hostname}", font=self.font, fill=255)
         self.draw.text((0, 15), f"Senha:{hostname}", font=self.font, fill=255)
-        self.draw.text((0, 30), "Status: Operacional", font=self.font, fill=255)
-        self.draw.text((0, 45), "<- Res       Des ->", font=self.font, fill=255)
+        self.draw.text((0, 30), "<- Res       Des ->", font=self.font, fill=255)
+        self.draw.text((0, 45), "v Parar  Confirma ^", font=self.font, fill=255)
         self.update_display()
 
     def handle_up(self, channel):
-        print('cima')
-
-    def handle_down(self, channel):
-        print('baixo')
-        if not self.confirmation_pending:
-            self.stop_robot()
-            self.show_main_screen()
-
-    def handle_left(self, channel):
-        if not self.confirmation_pending:
-            self.confirmation_pending = True
-            self.pending_action = "REBOOT"
-            self.show_confirmation_screen("Reiniciar nodes?", "Esq: Confirmar")
-        elif self.pending_action == "REBOOT":
-            self.execute_reboot()
+        print('cima - confirma')
+        if self.confirmation_pending and self.pending_action:
+            if self.pending_action == "REBOOT":
+                self.execute_reboot()
+            elif self.pending_action == "SHUTDOWN":
+                self.execute_shutdown()
             self.confirmation_pending = False
             self.pending_action = None
             self.show_main_screen()
 
+    def handle_down(self, channel):
+        print('baixo - parar')
+        if self.confirmation_pending:
+            self.cancel_confirmation()
+        else:
+            self.stop_robot()
+            self.show_main_screen()
+
+    def handle_left(self, channel):
+        print('esquerda - reboot')
+        if not self.confirmation_pending:
+            self.confirmation_pending = True
+            self.pending_action = "REBOOT"
+            self.show_confirmation_screen("Reiniciar nodes?", "Cima: Confirmar")
+        elif self.confirmation_pending:
+            # Aperto de outro botão cancela
+            self.cancel_confirmation()
+            self.show_main_screen()
+
     def handle_right(self, channel):
-        print('direita')
+        print('direita - shutdown')
         if not self.confirmation_pending:
             self.confirmation_pending = True
             self.pending_action = "SHUTDOWN"
-            self.show_confirmation_screen("Desligar robo?", "Dir: Confirmar")
-        elif self.pending_action == "SHUTDOWN":
-            self.execute_shutdown()
+            self.show_confirmation_screen("Desligar robo?", "Cima: Confirmar")
+        elif self.confirmation_pending:
+            # Aperto de outro botão cancela
+            self.cancel_confirmation()
+            self.show_main_screen()
 
-    def show_confirmation_screen(self, message):
+    def show_confirmation_screen(self, message, confirm_hint):
         self.clear_display()
-        self.draw.text((0, 0), "Confirmar ação:", font=self.font, fill=255)
-        self.draw.text((0, 20), message, font=self.font, fill=255)
-        self.draw.text((0, 40), "-> Direita para confirmar", font=self.font, fill=255)
+        self.draw.text((0, 0), "Confirmar acao:", font=self.font, fill=255)
+        self.draw.text((0, 15), message, font=self.font, fill=255)
+        self.draw.text((0, 30), confirm_hint, font=self.font, fill=255)
+        self.draw.text((0, 45), "Outro: Cancela", font=self.font, fill=255)
         self.update_display()
+        
+    def cancel_confirmation(self):
+        self.confirmation_pending = False
+        self.pending_action = None
+        self.show_main_screen()
 
     def stop_robot(self):
         self.clear_display()
         self.draw.text((0, 0), "Parando robô...", font=self.font, fill=255)
         self.update_display()
         subprocess.run("ros2 topic pub -1 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 0.0, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}'", shell=True)
-        time.sleep(2)
+        time.sleep(0.5)
         self.show_main_screen()
 
     def execute_reboot(self):
@@ -146,7 +169,7 @@ class Menu(Node):
     def run(self):
         try:
             while True:
-                time.sleep(0.1)
+                time.sleep(0.05)
         except KeyboardInterrupt:
             GPIO.cleanup()
             self.disp.clear()

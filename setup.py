@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'menu = insperbot.menu:main',
             'servo_arm = insperbot.servo_arm:main',
+            'april_tag = insperbot.april_tag:main',
         ],
     },
 )
