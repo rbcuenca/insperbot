@@ -1,0 +1,16 @@
+#systemctl enable start_turtle.service
+
+
+[Unit]
+Description=start_turtle
+After=network.target
+
+[Service]
+User=ubuntu
+Type=forking
+ExecStart=/usr/bin/start_turtle.sh
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target 
+
