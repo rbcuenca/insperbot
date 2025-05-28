@@ -11,14 +11,14 @@ from robcomp_interfaces.msg import YoloDetector
 class YoloDetectorNode(Node):
     def __init__(self):
         super().__init__('yolo_detector')
-        self.detection_model = YOLO("yolov8n.pt")  # Substitua pelo modelo desejado
+        self.detection_model = YOLO("/home/ubuntu/turtlebot3_ws/yolov8n.pt")  # Substitua pelo modelo desejado
         self.publisher_ = self.create_publisher(YoloDetector, 'yolo_info', 10)
         self.detectar = False  # Flag de controle
 
         # Subscriber para ativar/desativar detecção
         self.create_subscription(
             Bool,
-            '/detectar',
+            '/poweron_yolo',
             self.detectar_callback,
             10
         )
