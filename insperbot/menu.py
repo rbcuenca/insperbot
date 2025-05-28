@@ -51,6 +51,8 @@ class Menu(Node):
                             callback=self.handle_left, bouncetime=300)
         GPIO.add_event_detect(self.gpio_pin_right, GPIO.FALLING, 
                             callback=self.handle_right, bouncetime=300)
+        GPIO.add_event_detect(self.gpio_pin_up, GPIO.FALLING,
+                            callback=self.handle_up, bouncetime=300)
         GPIO.setwarnings(False)
 
     def initialize_display(self):
